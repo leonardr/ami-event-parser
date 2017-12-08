@@ -193,7 +193,6 @@ class Event(object):
         "Reformatted" : ["arch orig", "archival original"],
         "Digitized": ["digital preservation master", "digital pres master", "digital pres master", "preservation master", "vid pres master", "vid pres master", "pres master"],
     }
-    # if note begins with "Vid pres master 1:" then "digitized" if string before "copied" contains "digital" or "Digital" else "reformatted"
     
     from collections import Counter
     UNUSED = Counter()
@@ -221,7 +220,8 @@ class Event(object):
             return "Ignorable - Unknown Format"
 
         media = multispace.sub(" ", self.format.lower()).replace(". ", " ")
-        if media.startswith('vid pres master 1'):
+        if any(media.startswith(x) for x in (
+                'vid pres master 1', 'vid pres master 2')):
             full_text = self.note.text.lower()
             if 'digital' in full_text and full_text.index('digital') < full_text.index('copied'):
                 return "Digitized"
