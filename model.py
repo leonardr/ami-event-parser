@@ -271,11 +271,17 @@ class Note(object):
             self.representation = representation
             self.text = self.representation.get('note_text')
 
+    # We want to split clauses on a semicolon, but when a
+    # parenthetical statement contains a semicolon we want 
+    # to keep the parenthetical intact, and not split.
+    semicolon_not_in_parentheses = re.compile(";(?![^(]*\))")
+
     def clauses(self, with_resets=True):
         if with_resets:
             yield self.reset, None
         for format, sentence in self.sentences:
-            for clause in sentence.split(";"):
+            clauses = self.semicolon_not_in_parentheses.split(sentence)
+            for clause in clauses:
                 clause = clause.strip()
                 yield format, clause
             if with_resets:
