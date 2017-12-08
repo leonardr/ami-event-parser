@@ -217,32 +217,38 @@ class Event(object):
         # event.
         for k, actions in self.event_mapping.items():
             if any(action.startswith(x) for x in actions):
-                return k
+                self.type = k
+                return self.type
 
         # This is either copied, reformatted, or digitized.
 
         if not action.startswith('copied'):
-            return "Ignorable - Irrelevant Event"
+            self.type = "Ignorable - Irrelevant Event"
+            return self.type
 
         if not self.format:
-            return "Ignorable - Unknown Format"
+            self.type = "Ignorable - Unknown Format"
+            return self.type
 
         media = multispace.sub(" ", self.format.lower()).replace(". ", " ")
         if any(media.startswith(x) for x in self.digital_transfer_media):
             full_text = self.note.text.lower()
             if 'digital' in full_text and full_text.index('digital') < full_text.index('copied'):
-                return "Digitized"
+                self.type = "Digitized"
             else:
-                return "Reformatted"
+                self.type = "Reformatted"
+            return self.type
         
         for k, values in self.media_mapping.items():
             # Sometimes, if we know the media of the item, we can
             # deduce what must have happened to it.
             if any(x in media for x in values):
-                return k     
+                self.type = k
+                return self.type     
 
         self.UNUSED[media] += 1
-        return 'Unknown'
+        self.type = 'Unknown'
+        return self.type
 
 class Note(object):
 

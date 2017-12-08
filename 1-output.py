@@ -12,11 +12,18 @@ c = Counter()
 ignored = open("1-ignored.ndjson", "w")
 uninteresting = open("1-uninteresting.ndjson", "w")
 interesting = open("1-events.ndjson", "w")
+#not_cataloged = open("1-not-catalogued.ndjson", "w")
+#not_created = open("1-not-created.ndjson", "w")
 
 for i in open(filename):
     line = json.loads(i)
     item = Item(line)
     events = list(item.events)
+
+    #if not any(x for x in events if x.action_type == 'Cataloged'):
+    #    not_cataloged.write(i)
+    #if not any(x for x in events if x.action_type == 'Created'):
+    #    not_created.write(i)
 
     # An item is ignored if it does not have any events other than
     # 'Cataloged' and 'Created' events.
