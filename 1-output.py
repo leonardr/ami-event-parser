@@ -19,12 +19,12 @@ for i in open(filename):
     events = list(item.events)
 
     # We expect an item to have at least three events not to be considered
-    # 'ignored'
-    expect_event = 3
+    # 'ignored'.
+    expect_events = 3
     if not item.date_cataloged:
         # There is no catalog event -- we expect one fewer event.
         expect_events -= 1
-    if expect item.date_created:
+    if not item.date_created:
         # There is no creation event -- we expect one fewer event.
         expect_events -= 1
     if len(events) <= expect_events:
