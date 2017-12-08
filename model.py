@@ -191,8 +191,8 @@ class Event(object):
 
     @property
     def action_type(self):
-        if self.original in ('Cataloged', 'Created'):
-            return self.original
+        if hasattr(self, '_type'):
+            return self._type
         multispace = re.compile("  +")
         action = multispace.sub(" ", self.action.lower())
 
@@ -316,22 +316,24 @@ class Item(object):
         self.representation = representation
 
         cataloged_string = representation.get('date_cataloged')
+        self.date_cataloged = None
         if cataloged_string:
             note = Note(self, cataloged_string)
             self.date_cataloged = Event.from_clause(
                 note, None, cataloged_string
             )
-        else:
-            self.date_cataloged = None
+        if self.date_cataloged:
+            self.date_cataloged._type = 'Cataloged'
 
         created_string = representation.get('date_created')
+        self.date_created = None
         if created_string:
             note = Note(self, created_string)
             self.date_created = Event.from_clause(
                 note, None, created_string
             )
-        else:
-            self.date_created = None
+        if self.date_created:
+            self.date_created._type = 'Created'
 
         self.notes = []
         for note in representation.get('notes', []):

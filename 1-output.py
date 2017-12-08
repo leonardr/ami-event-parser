@@ -18,23 +18,12 @@ for i in open(filename):
     item = Item(line)
     events = list(item.events)
 
-    # We expect an item to have at least three events not to be considered
-    # 'ignored'.
-    expect_events = 3
-    if not item.date_cataloged:
-        # There is no catalog event -- we expect one fewer event.
-        expect_events -= 1
-    if not item.date_created:
-        # There is no creation event -- we expect one fewer event.
-        expect_events -= 1
-    if len(events) <= expect_events:
-        # The creation and digitization events are more or less
-        # universal, and not obtained by looking at the note. If these
-        # are the only events the Item has, it means the Item's notes
-        # were ignored.
+    # An item is ignored if it does not have any events other than
+    # 'Cataloged' and 'Created' events.
+    if not any(x for x in events if x.action_type not in ('Cataloged', 'Created')):
         ignored.write(i)
     else:
-        for event in item.events:
+        for event in events:
             if event.interesting:
                 output = interesting
             else:
