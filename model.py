@@ -212,11 +212,15 @@ class Event(object):
         multispace = re.compile("  +")
         action = multispace.sub(" ", self.action.lower())
 
+        # Sometimes, we can deduce the event type from the verb used
+        # to describe the action. e.g. "videotaped" means a capture
+        # event.
         for k, actions in self.event_mapping.items():
             if any(action.startswith(x) for x in actions):
                 return k
 
         # This is either copied, reformatted, or digitized.
+
         if not action.startswith('copied'):
             return "Ignorable - Irrelevant Event"
 
@@ -232,6 +236,8 @@ class Event(object):
                 return "Reformatted"
         
         for k, values in self.media_mapping.items():
+            # Sometimes, if we know the media of the item, we can
+            # deduce what must have happened to it.
             if any(x in media for x in values):
                 return k     
 
