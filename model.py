@@ -33,6 +33,14 @@ class Event(object):
         pattern = "(%s)-(%s)" % (r,r)
         date_range_templates.append((re.compile(pattern), p))
 
+    date_range_templates.append(
+        (re.compile("between ([0-9]{4}) and ([0-9]{4})"), "%Y")
+    )
+
+    date_range_templates.append(
+        (re.compile("from ([0-9]{4}) to ([0-9]{4})"), "%Y")
+    )
+
     # It's hard to determine whether a four-digit number that looks
     # like a year actually represents the year that the event
     # happened, but it's believable that two years next to each other
@@ -57,7 +65,7 @@ class Event(object):
     @classmethod
     def from_clause(cls, note, format, clause, type=None):
         event_date = None
-        if '-' in clause:
+        if any(x in clause for x in ('-', 'between', 'from')):
             # This might be a span of time.
             for regex, template in cls.date_range_templates:
                 matches = regex.findall(clause)
