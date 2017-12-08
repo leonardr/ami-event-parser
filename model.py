@@ -19,13 +19,23 @@ class Event(object):
         ("[0-9]{1,2}/[0-9]{1,2}/[0-9]{2}", "%m/%d/%y"),
         ("[0-9]{1,2}/[0-9]{4}", "%m/%Y"),
         ("[0-9]{1,2}/[0-9]{2}", "%m/%y"),
-        ("[A-Za-z]{4,} [0-9]{1,2}, [0-9]{4}", "%B %d, %Y"),
-        ("[A-Za-z]{4,} [0-9]{4}", "%B %Y"),
-        ("[A-Za-z]{3} [0-9]{4}", "%b %Y"),
+        ("[A-Za-z]{4,} +[0-9]{1,2}, [0-9]{4}", "%B %d, %Y"),
+        ("[A-Za-z]{4,} +[0-9]{4}", "%B %Y"),
+        ("[A-Za-z]{3} +[0-9]{4}", "%b %Y"),
     ]
     date_templates = []
+    date_range_templates = []
     for r, p in _date_templates:
         date_templates.append((re.compile("(%s)" % r), p))
+        pattern = "(%s)-(%s)" % (r,r)
+        date_range_templates.append((re.compile(pattern), p))
+
+    # It's hard to determine whether a four-digit number that looks
+    # like a year actually represents the year that the event
+    # happened, but it's believable that two years next to each other
+    # represent a span of time.
+    for r, p in [('[0-9]{4}-[0-9]{4}', '%Y')]:
+        date_range_templates.append((re.compile(pattern), p))
 
     def __init__(self, note, format, original, start, end=None):
         self.format = format
@@ -41,6 +51,18 @@ class Event(object):
     @classmethod
     def from_clause(cls, note, format, clause):
         event_date = None
+        if '-' in clause:
+            # This might be a span of time.
+            for regex, template in cls.date_range_templates:
+                matches = regex.findall(clause)
+                for (start, finish) in matches:
+                    try:
+                        start_date = datetime.datetime.strptime(start, template).date()
+                        finish_date = datetime.datetime.strptime(finish, template)
+                        return Event(note, format, clause, start_date, finish_date)
+                    except ValueError, e:
+                        pass
+
         for regex, template in cls.date_templates:
             match = regex.findall(clause)
             if match:
@@ -57,6 +79,17 @@ class Event(object):
                         # previous_failure = True
                 if event_date:
                     return Event(note, format, clause, event_date)
+
+        # If the only thing in the clause is a believable year, treat
+        # that as the date.
+        if len(clause) == 4:
+            try:
+                year = int(clause)
+                if year <= datetime.datetime.utcnow().year and year > 1960:
+                    event_date = datetime.date(year=year, month=1, day=1)
+                    return Event(note, format, clause, event_date)
+            except ValueError, e:
+                pass
         return None
 
     @property
@@ -110,6 +143,8 @@ class Event(object):
             return action.strip()
 
     def _format_date(self, date):
+        if not date:
+            return None
         real_year = str(self.start.year)
         if self.start.year < 1900:
             # This will stop strftime from choking.
@@ -125,7 +160,8 @@ class Event(object):
             event=self.action,
             media = self.format,
             full_event=self.original,
-            when=self._format_date(self.start)
+            event_start=self._format_date(self.start),
+            event_end=self._format_date(self.end),
         )
         if isinstance(self.note, Note):
             data['full_note'] = self.note.text
@@ -278,25 +314,25 @@ class Item(object):
 
     def __init__(self, representation):
         self.representation = representation
-        self.date_cataloged_original = representation.get('date_cataloged')
-        self.date_cataloged = None
-        if self.date_cataloged_original:
-            try:
-                self.date_cataloged = datetime.datetime.strptime(
-                    self.date_cataloged_original, '%Y-%m-%d'
-                )
-            except ValueError, e:
-                pass
-        self.date_created_original = representation.get('date_created')
-        self.date_created = None
-        if self.date_created_original:
-            year_part = self.date_created_original[:4]
-            try:
-                self.date_created = datetime.datetime.strptime(
-                    year_part, '%Y'
-                )
-            except ValueError, e:
-                pass
+
+        cataloged_string = representation.get('date_cataloged')
+        if cataloged_string:
+            note = Note(self, cataloged_string)
+            self.date_cataloged = Event.from_clause(
+                note, None, cataloged_string
+            )
+        else:
+            self.date_cataloged = None
+
+        created_string = representation.get('date_created')
+        if created_string:
+            note = Note(self, created_string)
+            self.date_created = Event.from_clause(
+                note, None, created_string
+            )
+        else:
+            self.date_created = None
+
         self.notes = []
         for note in representation.get('notes', []):
             note = Note(self, note)
@@ -305,15 +341,9 @@ class Item(object):
     @property
     def events(self):
         if self.date_cataloged:
-            yield Event(
-                Note(self, self.date_cataloged_original),
-                None, "Cataloged", self.date_cataloged
-            )
+            yield self.date_cataloged
         if self.date_created:
-            yield Event(
-                Note(self, self.date_created_original),
-                None, "Created", self.date_created
-            )
+            yield self.date_created
         for note in self.notes:
             for event in note.events:
                 yield event
