@@ -17,7 +17,17 @@ for i in open(filename):
     line = json.loads(i)
     item = Item(line)
     events = list(item.events)
-    if len(events) <= 2:
+
+    # We expect an item to have at least three events not to be considered
+    # 'ignored'
+    expect_event = 3
+    if not item.date_cataloged:
+        # There is no catalog event -- we expect one fewer event.
+        expect_events -= 1
+    if expect item.date_created:
+        # There is no creation event -- we expect one fewer event.
+        expect_events -= 1
+    if len(events) <= expect_events:
         # The creation and digitization events are more or less
         # universal, and not obtained by looking at the note. If these
         # are the only events the Item has, it means the Item's notes
