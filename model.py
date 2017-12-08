@@ -193,6 +193,10 @@ class Event(object):
         "Reformatted" : ["arch orig", "archival original"],
         "Digitized": ["digital preservation master", "digital pres master", "digital pres master", "preservation master", "vid pres master", "vid pres master", "pres master"],
     }
+
+    # If an item is in one of these media, then its events are likely
+    # to be 'Digitized' or 'Reformatted' events.
+    digital_transfer_media = ['vid pres master 1', 'vid pres master 2']
     
     from collections import Counter
     UNUSED = Counter()
@@ -220,8 +224,7 @@ class Event(object):
             return "Ignorable - Unknown Format"
 
         media = multispace.sub(" ", self.format.lower()).replace(". ", " ")
-        if any(media.startswith(x) for x in (
-                'vid pres master 1', 'vid pres master 2')):
+        if any(media.startswith(x) for x in self.digital_transfer_media):
             full_text = self.note.text.lower()
             if 'digital' in full_text and full_text.index('digital') < full_text.index('copied'):
                 return "Digitized"
