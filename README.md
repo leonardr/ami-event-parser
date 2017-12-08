@@ -15,9 +15,9 @@ Archival Original: 3 reels 16 mm positive prints, donated by Ruth Hari, 5/93; in
 
 ## Split into clauses
 
-1a. Archival Original: 3 reels 16 mm positive prints, donated by Ruth Hari, 5/93
-1b. in ReCAP can #1281.
-2a. Transferred from IMAR to Princeton ReCAP cold storage, 2/2009.
+1. Archival Original: 3 reels 16 mm positive prints, donated by Ruth Hari, 5/93
+2. in ReCAP can #1281.
+3. Transferred from IMAR to Princeton ReCAP cold storage, 2/2009.
 
 ## Find the verb
 
