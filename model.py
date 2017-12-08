@@ -3,9 +3,9 @@ import json
 from pdb import set_trace
 from tokenizer import tokenizer
 import re
-filename = "ami-catalog-notes_2017-12-06.ndjson"
+filename = "ami-catalog-notes_2017-12-07.ndjson"
 
-verbs = [x.strip() for x in open("verbs")]
+verbs = [x.strip() for x in open("common-verbs.txt")]
 verb_partials = ["rec"]
 
 class Event(object):
@@ -19,6 +19,9 @@ class Event(object):
         ("[0-9]{1,2}/[0-9]{1,2}/[0-9]{2}", "%m/%d/%y"),
         ("[0-9]{1,2}/[0-9]{4}", "%m/%Y"),
         ("[0-9]{1,2}/[0-9]{2}", "%m/%y"),
+        ("[A-Za-z]{4,} [0-9]{1,2}, [0-9]{4}", "%B %d, %Y"),
+        ("[A-Za-z]{4,} [0-9]{4}", "%B %Y"),
+        ("[A-Za-z]{3} [0-9]{4}", "%b %Y"),
     ]
     date_templates = []
     for r, p in _date_templates:
@@ -36,13 +39,20 @@ class Event(object):
     def from_clause(cls, note, format, clause):
         event_date = None
         for regex, template in cls.date_templates:
-            match = regex.search(clause)
+            match = regex.findall(clause)
             if match:
-                match_against = match.groups()[0]
-                try:
-                    event_date = datetime.datetime.strptime(match_against, template).date()
-                except ValueError, e:
-                    print "Could not get format: %s" % clause
+                # print "I think %s is in %s" % (template, clause)
+                previous_failure = False
+                for match_against in match:
+                    try:
+                        event_date = datetime.datetime.strptime(match_against, template).date()
+                        if previous_failure:
+                            print "Never mind, found it."
+                    except ValueError, e:
+                        print clause
+                        pass
+                        # print "Could not get format %s: %s" % (template, clause)
+                        # previous_failure = True
                 if event_date:
                     return Event(note, format, clause, event_date)
         return None
@@ -68,8 +78,9 @@ class Event(object):
             if action:
                 return action
 
-        if ". copy, " in self.original.lower():
-            i = self.original.index('. copy, ')
+        lowered = self.original.lower()
+        if ". copy, " in lowered:
+            i = lowered.index('. copy, ')
             return self.original[i+2:].strip()
 
         for r in self.verb_re + [self.verb_partial_re]:
@@ -96,6 +107,14 @@ class Event(object):
                 action = action[1:]
             return action.strip()
 
+    def _format_date(self, date):
+        real_year = str(self.start.year)
+        if self.start.year < 1900:
+            # This will stop strftime from choking.
+            date = datetime.date(year=1900, month=date.month,
+                                 day=date.day)
+        return real_year + '/' + date.strftime('%m/%d'),
+
     @property
     def as_json(self):
         data = dict(
@@ -105,7 +124,7 @@ class Event(object):
             media = self.format,
             full_event=self.original,
             full_note=self.note.text,
-            when=self.start.strftime('%Y/%m/%d'),
+            when=self._format_date(self.start)
         )
         return json.dumps(data)
 
@@ -133,7 +152,7 @@ class Event(object):
     def action_type(self):
         multispace = re.compile("  +")
         action = multispace.sub(" ", self.action.lower())
-        
+
         for k, actions in self.event_mapping.items():
             if any(action.startswith(x) for x in actions):
                 return k

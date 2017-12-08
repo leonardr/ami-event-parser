@@ -9,12 +9,20 @@ from textblob import TextBlob
 all_text = []
 c = Counter()
 
+ignored = open("1-ignored.ndjson", "w")
+uninteresting = open("1-uninteresting.ndjson", "w")
+interesting = open("1-events.ndjson", "w")
+
 for i in open(filename):
     line = json.loads(i)
     item = Item(line)
-    for event in item.events:
-        if event.interesting:
-            print event.as_json
-    
-#for k, v in Event.UNUSED.most_common():
-#    print k, v
+    events = list(item.events)
+    if not events:
+        ignored.write(i)
+    else:
+        for event in item.events:
+            if event.interesting:
+                output = interesting
+            else:
+                output = uninteresting
+            output.write(event.as_json + "\n")
