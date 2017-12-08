@@ -33,7 +33,10 @@ class Event(object):
         self.start = start
         self.end = end
         self.note = note
-        self.item = note.item
+        if isinstance(note, Item):
+            self.item = note
+        else:
+            self.item = note.item
 
     @classmethod
     def from_clause(cls, note, format, clause):
@@ -49,7 +52,6 @@ class Event(object):
                         if previous_failure:
                             print "Never mind, found it."
                     except ValueError, e:
-                        print clause
                         pass
                         # print "Could not get format %s: %s" % (template, clause)
                         # previous_failure = True
@@ -113,7 +115,7 @@ class Event(object):
             # This will stop strftime from choking.
             date = datetime.date(year=1900, month=date.month,
                                  day=date.day)
-        return real_year + '/' + date.strftime('%m/%d'),
+        return real_year + '/' + date.strftime('%m/%d')
 
     @property
     def as_json(self):
@@ -123,9 +125,12 @@ class Event(object):
             event=self.action,
             media = self.format,
             full_event=self.original,
-            full_note=self.note.text,
             when=self._format_date(self.start)
         )
+        if isinstance(self.note, Note):
+            data['full_note'] = self.note.text
+        else:
+            data['full_note'] = None
         return json.dumps(data)
 
     event_mapping = {
@@ -150,6 +155,8 @@ class Event(object):
 
     @property
     def action_type(self):
+        if self.original in ('Cataloged', 'Created'):
+            return self.original
         multispace = re.compile("  +")
         action = multispace.sub(" ", self.action.lower())
 
@@ -271,6 +278,25 @@ class Item(object):
 
     def __init__(self, representation):
         self.representation = representation
+        self.date_cataloged_original = representation.get('date_cataloged')
+        self.date_cataloged = None
+        if self.date_cataloged_original:
+            try:
+                self.date_cataloged = datetime.datetime.strptime(
+                    self.date_cataloged_original, '%Y-%m-%d'
+                )
+            except ValueError, e:
+                pass
+        self.date_created_original = representation.get('date_created')
+        self.date_created = None
+        if self.date_created_original:
+            year_part = self.date_created_original[:4]
+            try:
+                self.date_created = datetime.datetime.strptime(
+                    year_part, '%Y'
+                )
+            except ValueError, e:
+                pass
         self.notes = []
         for note in representation.get('notes', []):
             note = Note(self, note)
@@ -278,6 +304,16 @@ class Item(object):
 
     @property
     def events(self):
+        if self.date_cataloged:
+            yield Event(
+                Note(self, self.date_cataloged_original),
+                None, "Cataloged", self.date_cataloged
+            )
+        if self.date_created:
+            yield Event(
+                Note(self, self.date_created_original),
+                None, "Created", self.date_created
+            )
         for note in self.notes:
             for event in note.events:
                 yield event

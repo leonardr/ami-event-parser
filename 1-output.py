@@ -17,7 +17,11 @@ for i in open(filename):
     line = json.loads(i)
     item = Item(line)
     events = list(item.events)
-    if not events:
+    if len(events) <= 2:
+        # The creation and digitization events are more or less
+        # universal, and not obtained by looking at the note. If these
+        # are the only events the Item has, it means the Item's notes
+        # were ignored.
         ignored.write(i)
     else:
         for event in item.events:
